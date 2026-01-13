@@ -7,6 +7,7 @@ const App = () => {
   let [res, setres] = useState("");
   
   let [refresh, setRefresh] = useState(false);
+  let [editId, setEditId] = useState(null);
 
   useEffect(() => {
     async function getData() {
@@ -26,10 +27,20 @@ const App = () => {
       Discriptions: e.target[2].value,
     };
 
-    await axios.post(
-      "http://127.0.0.1:8000/api/task/createTask",
-      data
-    );
+    if (editId) {
+      // Update Mode
+      await axios.post(
+        `http://127.0.0.1:8000/api/task/update/${editId}`,
+        data
+      );
+      setEditId(null);
+    } else {
+      // Create Mode
+      await axios.post(
+        "http://127.0.0.1:8000/api/task/createTask",
+        data
+      );
+    }
     setRefresh(!refresh);
     e.target.reset();
   }
@@ -46,6 +57,22 @@ const App = () => {
      }
   }
 
+  function handleEdit(task) {
+    setEditId(task.id);
+    const form = document.querySelector('form');
+    // Basic way to populate the form fields
+    form[0].value = task.TaskName;
+    form[1].value = task.Title;
+    form[2].value = task.Discriptions;
+    // Scroll to form
+    form.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function handleCancelEdit() {
+    setEditId(null);
+    document.querySelector('form').reset();
+  }
+
 
   return (
     <div className="min-h-screen text-slate-100 selection:bg-cyan-500/30 pt-24 pb-12 px-4">
@@ -56,7 +83,7 @@ const App = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
         
         <h1 className="text-3xl font-bold text-center mb-8 bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent relative z-10">
-          Add New Task
+          {editId ? 'Update Task' : 'Add New Task'}
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
@@ -81,12 +108,23 @@ const App = () => {
               className="w-full px-5 py-3 bg-slate-950/50 border border-white/10 rounded-xl focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all placeholder:text-slate-500 text-slate-200 resize-none"
             />
           </div>
-          <button
-            type="submit"
-            className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white py-3.5 rounded-xl font-bold tracking-wide hover:shadow-[0_0_20px_rgba(6,182,212,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 border border-white/10"
-          >
-            Create Task
-          </button>
+          <div className="flex gap-3">
+            <button
+              type="submit"
+              className={`w-full text-white py-3.5 rounded-xl font-bold tracking-wide hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 border border-white/10 ${editId ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)]' : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:shadow-[0_0_20px_rgba(6,182,212,0.4)]'}`}
+            >
+              {editId ? 'Save Changes' : 'Create Task'}
+            </button>
+            {editId && (
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="px-6 py-3.5 bg-slate-700/50 text-slate-300 rounded-xl font-bold hover:bg-slate-700 hover:text-white transition-all border border-white/10"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
         </form>
       </div>
 
@@ -95,7 +133,7 @@ const App = () => {
         {todo.map((e, i) => (
           <div
             key={i}
-            className="backdrop-blur-md bg-white/5 border border-white/10 p-6 rounded-2xl shadow-lg hover:border-cyan-500/30 hover:bg-white/10 transition-all duration-300 group relative overflow-hidden"
+            className={`backdrop-blur-md bg-white/5 border border-white/10 p-6 rounded-2xl shadow-lg transition-all duration-300 group relative overflow-hidden ${editId === e.id ? 'ring-2 ring-emerald-500/50 bg-emerald-500/5' : 'hover:border-cyan-500/30 hover:bg-white/10'}`}
           >
             <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-cyan-400 to-purple-500" />
             
@@ -104,9 +142,11 @@ const App = () => {
                 <h2 className="text-xl font-bold text-slate-100 group-hover:text-cyan-400 transition-colors">
                   {e.TaskName}
                 </h2>
-                <span className="text-xs font-medium px-2 py-1 rounded-full bg-slate-800/50 border border-white/5 text-slate-400">
-                  #{i + 1}
-                </span>
+                <div className="flex items-center gap-3">
+                   <span className="text-xs font-medium px-2 py-1 rounded-full bg-slate-800/50 border border-white/5 text-slate-400">
+                    #{i + 1}
+                  </span>
+                </div>
               </div>
               
               <p className="font-semibold text-cyan-200/80 mb-2 text-sm uppercase tracking-wider">
@@ -117,13 +157,21 @@ const App = () => {
                 {e.Discriptions}
               </p>
 
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => handleEdit(e)}
+                  className="px-4 py-2 bg-emerald-500/10 text-emerald-400 text-sm font-semibold rounded-lg border border-emerald-500/20
+                             hover:bg-emerald-500/20 hover:border-emerald-500/40 hover:text-emerald-300 active:scale-95 transition-all duration-200 flex items-center gap-2 group/btn"
+                >
+                  <span>Edit</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70 group-hover/btn:opacity-100 transition-opacity"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                </button>
                 <button
                   onClick={() => handleDelete(e.id)}
                   className="px-4 py-2 bg-red-500/10 text-red-400 text-sm font-semibold rounded-lg border border-red-500/20
                              hover:bg-red-500/20 hover:border-red-500/40 hover:text-red-300 active:scale-95 transition-all duration-200 flex items-center gap-2 group/btn"
                 >
-                  <span>Delete Task</span>
+                  <span>Delete</span>
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-70 group-hover/btn:opacity-100 transition-opacity"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                 </button>
               </div>
